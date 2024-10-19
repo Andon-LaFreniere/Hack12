@@ -1,70 +1,65 @@
-#include <AccelStepper.h>
+// Define the MS1, MS2, MS3 pins
+const int MS1 = 7;  // Example: connected to Arduino pin 7
+const int MS2 = 8;  // Example: connected to Arduino pin 8
+const int MS3 = 9;  // Example: connected to Arduino pin 9
 
-// Define stepper motor connections and motor interface type
-#define MOTOR_INTERFACE_TYPE 1  // Using Step and Direction pins
+// Define Stepper Motor Connections
+const int stepPinX = 3; // Step pin for X-axis
+const int dirPinX = 4;  // Direction pin for X-axis
 
-// Motor pins for X-axis
-const int stepPinX = 3;
-const int dirPinX = 4;
+const int stepPinY = 5; // Step pin for Y-axis
+const int dirPinY = 6;  // Direction pin for Y-axis
 
-// Motor pins for Y-axis
-const int stepPinY = 5;
-const int dirPinY = 6;
+// Define Steps per Revolution based on Microstepping
+const long stepsPerRev = 3200;  // Adjust for your microstepping mode
 
-// Create AccelStepper instances for X and Y axes
-AccelStepper stepperX(MOTOR_INTERFACE_TYPE, stepPinX, dirPinX);
-AccelStepper stepperY(MOTOR_INTERFACE_TYPE, stepPinY, dirPinY);
-
-// Set the number of steps per revolution based on your microstepping setting
-// For 1/16 microstepping: 200 steps * 16 = 3200 steps/rev
-const long stepsPerRev_X = 3200;  // Adjust if using different microstepping
-const long stepsPerRev_Y = 3200;  // Adjust if using different microstepping
-
-// Flag to indicate if a move is in progress
-bool isMoving = false;
+// Define Delay Between Steps (in Microseconds)
+const int stepDelay = 1000;  // Adjust this value to control motor speed (1000 µs = 1 ms per step)
 
 void setup() {
-  // Initialize serial communication for debugging
+  // Initialize Step and Direction Pins as Outputs
+  pinMode(stepPinX, OUTPUT);
+  pinMode(dirPinX, OUTPUT);
+  pinMode(stepPinY, OUTPUT);
+  pinMode(dirPinY, OUTPUT);
+
+  // Initialize MS1, MS2, MS3 pins as Outputs
+  pinMode(MS1, OUTPUT);
+  pinMode(MS2, OUTPUT);
+  pinMode(MS3, OUTPUT);
+
+  // Set Microstepping Mode (Example: 1/16 Microstepping)
+  digitalWrite(MS1, HIGH); // Set MS1 to HIGH
+  digitalWrite(MS2, HIGH); // Set MS2 to HIGH
+  digitalWrite(MS3, HIGH); // Set MS3 to HIGH
+
+  // Set direction for both motors (HIGH = one direction, LOW = reverse)
+  digitalWrite(dirPinX, HIGH);
+  digitalWrite(dirPinY, HIGH);
+
+  // Initialize Serial Communication for Debugging
   Serial.begin(9600);
-  while (!Serial) {
-    ; // Wait for serial port to connect. Needed for native USB
-  }
-  Serial.println("Arduino Ready. Starting rotation...");
-
-  // Configure steppers
-  stepperX.setMaxSpeed(1000);      // Steps per second
-  stepperX.setAcceleration(500);   // Steps per second^2
-
-  stepperY.setMaxSpeed(1000);
-  stepperY.setAcceleration(500);
-
-  // Set initial positions to zero
-  stepperX.setCurrentPosition(0);
-  stepperY.setCurrentPosition(0);
-
-  // Define target positions for one full revolution
-  stepperX.moveTo(stepsPerRev_X);
-  stepperY.moveTo(stepsPerRev_Y);
-
-  isMoving = true;
+  Serial.println("Microstepping mode set to 1/16 step.");
 }
 
 void loop() {
-  if (isMoving) {
-    // Run both steppers
-    bool stepperXRunning = stepperX.run();
-    bool stepperYRunning = stepperY.run();
+  // Rotate Both Motors One Full Revolution
+  for (long i = 0; i < stepsPerRev; i++) {
+    // Pulse Step Pins HIGH
+    digitalWrite(stepPinX, HIGH);
+    digitalWrite(stepPinY, HIGH);
+    delayMicroseconds(stepDelay);
+    
+    // Pulse Step Pins LOW
+    digitalWrite(stepPinX, LOW);
+    digitalWrite(stepPinY, LOW);
+    delayMicroseconds(stepDelay);
+  }
 
-    // Check if both steppers have reached their targets
-    if (!stepperXRunning && !stepperYRunning) {
-      isMoving = false;
-      Serial.println("Both motors have completed one full revolution.");
-      
-      // Optionally, stop the program or reset for another move
-      // For demonstration, we'll halt here
-      while (1) {
-        ; // Do nothing, effectively stopping the loop
-      }
-    }
+  Serial.println("Completed one full revolution on both X and Y axes.");
+
+  // Optional: Stop the Arduino after rotation
+  while (1) {
+    ; // Infinite loop to halt further actions
   }
 }
