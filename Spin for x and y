@@ -1,0 +1,46 @@
+// Defines pins numbers for X and Y axes
+const int stepPinX = 3;
+const int dirPinX = 4;
+
+const int stepPinY = 5;
+const int dirPinY = 6;
+
+int customDelay, customDelayMapped;  // Defines variables for delays
+
+void setup() {
+  // Sets the pins as Outputs for X-axis
+  pinMode(stepPinX, OUTPUT);
+  pinMode(dirPinX, OUTPUT);
+
+  // Sets the pins as Outputs for Y-axis
+  pinMode(stepPinY, OUTPUT);
+  pinMode(dirPinY, OUTPUT);
+
+  // Set initial direction for both X and Y axes
+  digitalWrite(dirPinX, HIGH);  // X-axis moves in a particular direction
+  digitalWrite(dirPinY, HIGH);  // Y-axis moves in a particular direction
+}
+
+void loop() {
+  // Gets custom delay values from the custom speedUp function
+  customDelayMapped = speedUp();  
+
+  // X-axis control
+  digitalWrite(stepPinX, HIGH);
+  delayMicroseconds(customDelayMapped);
+  digitalWrite(stepPinX, LOW);
+  delayMicroseconds(customDelayMapped);
+
+  // Y-axis control
+  digitalWrite(stepPinY, HIGH);
+  delayMicroseconds(customDelayMapped);
+  digitalWrite(stepPinY, LOW);
+  delayMicroseconds(customDelayMapped);
+}
+
+// Function for reading the Potentiometer
+int speedUp() {
+  int customDelay = analogRead(A0);  // Reads the potentiometer
+  int newCustom = map(customDelay, 0, 1023, 300, 4000);  // Converts the potentiometer values from 0 to 1023 into delay values (300 to 4000)
+  return newCustom;
+}
