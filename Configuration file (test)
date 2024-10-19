@@ -1,204 +1,65 @@
-////////// CALIBRATION SCRIPT (PRAY) /////////// 
-
 #include <AccelStepper.h>
 
-// ==============================
-// Configuration Parameters
-// ==============================
-
-// Motor pins for X-axis
+// Defines pins for the X-axis
 const int stepPinX = 3;
 const int dirPinX = 4;
 
-// Motor pins for Y-axis
-const int stepPinY = 5;
-const int dirPinY = 6;
+// Stepper motor setup for X-axis
+AccelStepper stepperX(AccelStepper::DRIVER, stepPinX, dirPinX);
 
-// Microstepping control pins (MS1, MS2, MS3)
-const int ms1Pin = 7;
-const int ms2Pin = 8;
-const int ms3Pin = 9;
-
-// Define stepper motor interface type
-#define MOTOR_INTERFACE_TYPE 1  // Driver with step and direction pins
-
-// Create AccelStepper instances for X and Y axes
-AccelStepper stepperX(MOTOR_INTERFACE_TYPE, stepPinX, dirPinX);
-AccelStepper stepperY(MOTOR_INTERFACE_TYPE, stepPinY, dirPinY);
-
-// Calibration variables (to be updated after calibration)
-float stepsPerMM_X = 1600.0;  // Placeholder value for X-axis
-float stepsPerMM_Y = 1600.0;  // Placeholder value for Y-axis
-
-// Movement parameters
-float maxSpeed = 3000.0;       // Max speed in steps per second (adjust as needed)
-float acceleration = 1000.0;   // Acceleration in steps per second squared
+// Initial steps per millimeter for X-axis (starting with 1600 steps)
+float stepsPerMM_X = 1600.0;  // Adjust this after calibration
 
 void setup() {
   Serial.begin(9600);
   
-  // Setup microstepping pins
-  pinMode(ms1Pin, OUTPUT);
-  pinMode(ms2Pin, OUTPUT);
-  pinMode(ms3Pin, OUTPUT);
+  // Set up the stepper motor's max speed and acceleration
+  stepperX.setMaxSpeed(3000);  // Max speed in steps per second
+  stepperX.setAcceleration(1000);  // Acceleration in steps per second squared
   
-  // Set microstepping mode to 1/16
-  setMicrosteppingMode(16);
-  
-  // Configure steppers
-  stepperX.setMaxSpeed(maxSpeed);
-  stepperX.setAcceleration(acceleration);
-  stepperY.setMaxSpeed(maxSpeed);
-  stepperY.setAcceleration(acceleration);
-  
-  // Set initial positions to zero
-  stepperX.setCurrentPosition(0);
-  stepperY.setCurrentPosition(0);
-  
-  // Inform user about calibration mode
-  Serial.println("Calibration Mode Activated");
-  Serial.println("Enter commands in the format:");
-  Serial.println("'CALIBRATE X <steps>' or 'CALIBRATE Y <steps>'");
-  Serial.println("'SET_STEPS_PER_MM X <value>' or 'SET_STEPS_PER_MM Y <value>'");
+  Serial.println("Calibration Mode: X-Axis");
+  Serial.println("Enter 'CALIBRATE X <steps>' to move the motor by a number of steps.");
+  Serial.println("After measurement, enter 'SET_STEPS_PER_MM X <value>' to update the calibration.");
 }
 
 void loop() {
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
-    input.trim();  // Remove any leading/trailing whitespace
+    input.trim();
     
-    // Parse the input command
-    if (input.startsWith("CALIBRATE")) {
-      int firstSpace = input.indexOf(' ');
-      int secondSpace = input.indexOf(' ', firstSpace + 1);
-      if (firstSpace != -1 && secondSpace != -1) {
-        String axis = input.substring(firstSpace + 1, secondSpace);
-        long steps = input.substring(secondSpace + 1).toInt();
-        
-        if (axis == "X") {
-          Serial.print("Calibrating X axis for ");
-          Serial.print(steps);
-          Serial.println(" microsteps.");
-          moveStepper(stepperX, steps, stepCountX);
-          Serial.println("Calibration for X axis completed.");
-        }
-        else if (axis == "Y") {
-          Serial.print("Calibrating Y axis for ");
-          Serial.print(steps);
-          Serial.println(" microsteps.");
-          moveStepper(stepperY, steps, stepCountY);
-          Serial.println("Calibration for Y axis completed.");
-        }
-        else {
-          Serial.println("Invalid axis. Use 'X' or 'Y'.");
-        }
-      }
-      else {
-        Serial.println("Invalid CALIBRATE command format.");
-      }
+    // Handle CALIBRATE command
+    if (input.startsWith("CALIBRATE X")) {
+      long steps = input.substring(11).toInt();
+      Serial.print("Moving X-axis by ");
+      Serial.print(steps);
+      Serial.println(" steps.");
+      moveStepperX(steps);
     }
-    else if (input.startsWith("SET_STEPS_PER_MM")) {
-      int firstSpace = input.indexOf(' ');
-      int secondSpace = input.indexOf(' ', firstSpace + 1);
-      if (firstSpace != -1 && secondSpace != -1) {
-        String axis = input.substring(firstSpace + 1, secondSpace);
-        float stepsPerMM = input.substring(secondSpace + 1).toFloat();
-        
-        if (axis == "X") {
-          stepsPerMM_X = stepsPerMM;
-          Serial.print("Set stepsPerMM_X to ");
-          Serial.println(stepsPerMM_X);
-        }
-        else if (axis == "Y") {
-          stepsPerMM_Y = stepsPerMM;
-          Serial.print("Set stepsPerMM_Y to ");
-          Serial.println(stepsPerMM_Y);
-        }
-        else {
-          Serial.println("Invalid axis. Use 'X' or 'Y'.");
-        }
-      }
-      else {
-        Serial.println("Invalid SET_STEPS_PER_MM command format.");
-      }
-    }
-    else {
-      Serial.println("Unknown command.");
+    
+    // Handle SET_STEPS_PER_MM command
+    else if (input.startsWith("SET_STEPS_PER_MM X")) {
+      stepsPerMM_X = input.substring(18).toFloat();
+      Serial.print("Updated stepsPerMM_X to: ");
+      Serial.println(stepsPerMM_X);
     }
   }
   
-  // Continuously run the steppers
-  stepperX.run();
-  stepperY.run();
+  stepperX.run();  // Continuously run the stepper motor
 }
 
-// Function to set microstepping mode
-void setMicrosteppingMode(int microsteps) {
-  // Set the appropriate pins for the desired microstepping mode
-  if (microsteps == 1) {
-    digitalWrite(ms1Pin, LOW);
-    digitalWrite(ms2Pin, LOW);
-    digitalWrite(ms3Pin, LOW);
-  } 
-  else if (microsteps == 2) {
-    digitalWrite(ms1Pin, HIGH);
-    digitalWrite(ms2Pin, LOW);
-    digitalWrite(ms3Pin, LOW);
-  } 
-  else if (microsteps == 4) {
-    digitalWrite(ms1Pin, LOW);
-    digitalWrite(ms2Pin, HIGH);
-    digitalWrite(ms3Pin, LOW);
-  } 
-  else if (microsteps == 8) {
-    digitalWrite(ms1Pin, HIGH);
-    digitalWrite(ms2Pin, HIGH);
-    digitalWrite(ms3Pin, LOW);
-  } 
-  else if (microsteps == 16) {
-    digitalWrite(ms1Pin, HIGH);
-    digitalWrite(ms2Pin, HIGH);
-    digitalWrite(ms3Pin, HIGH);
+// Function to move the X-axis by a specific number of steps
+void moveStepperX(long steps) {
+  stepperX.move(steps);
+  while (stepperX.distanceToGo() != 0) {
+    stepperX.run();
   }
-  else {
-    // Default to full step if invalid input
-    digitalWrite(ms1Pin, LOW);
-    digitalWrite(ms2Pin, LOW);
-    digitalWrite(ms3Pin, LOW);
-    Serial.println("Invalid microstepping mode. Defaulting to full step.");
-  }
+  sendPositionX();
 }
 
-// Function to move a stepper motor by a specified number of microsteps
-void moveStepper(AccelStepper &stepper, long steps, long &stepCount) {
-  stepper.move(steps);
-  
-  while (stepper.distanceToGo() != 0) {
-    stepper.run();
-    
-    if (steps > 0) {
-      stepCount++;
-    }
-    else {
-      stepCount--;
-    }
-    
-    sendPosition();
-  }
-}
-
-// Function to send current positions over serial
-void sendPosition() {
+// Function to report the current position in millimeters
+void sendPositionX() {
   float x_mm = stepperX.currentPosition() / stepsPerMM_X;
-  float y_mm = stepperY.currentPosition() / stepsPerMM_Y;
-  Serial.print("X: ");
-  Serial.print(x_mm, 3);  // 3 decimal places
-  Serial.print(" mm, Y: ");
-  Serial.print(y_mm, 3);
+  Serial.print("Current X position: ");
+  Serial.print(x_mm, 3);  // Display in millimeters with 3 decimal places
   Serial.println(" mm");
-}
-
-
-//////// Test this type in values for 9600 BAUD rate 
-
-// Then set the values for the x and y at around 3200 see the changeswe can change these values absed off what we find. 
+} //x test
