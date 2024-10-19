@@ -1,0 +1,16 @@
+steplist=[]
+steplistx = []
+steplisty = []
+Hpointsmm = [[.25, .5], [.25, 1], [.25, 1.5], [.5, 1], [.75, .5], [.75, 1], [.75, 1.5]]
+for i in range(len(Hpointsmm)):
+    for f in range(2):
+        Hpointsmm[i][f] = Hpointsmm[i][f]*424
+        steplist.append(((Hpointsmm[i][f])*200)/192)
+
+for i in range(len(steplist)):
+    if (i % 2 == 0):
+        steplistx.append(steplist[i])
+    else:
+        steplisty.append(steplist[i])
+print(steplistx)
+print(steplisty)
