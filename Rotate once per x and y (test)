@@ -1,0 +1,83 @@
+#include <AccelStepper.h>
+
+// Define stepper motor connections and motor interface type
+#define MOTOR_INTERFACE_TYPE 1  // Using step and direction pins
+
+// Motor pins for X-axis
+const int stepPinX = 3;
+const int dirPinX = 4;
+
+// Motor pins for Y-axis
+const int stepPinY = 5;
+const int dirPinY = 6;
+
+// Create AccelStepper instances for X and Y axes
+AccelStepper stepperX(MOTOR_INTERFACE_TYPE, stepPinX, dirPinX);
+AccelStepper stepperY(MOTOR_INTERFACE_TYPE, stepPinY, dirPinY);
+
+// Calibration variables (steps per revolution)
+const long stepsPerRev = 200;  // 200 steps per revolution
+
+void setup() {
+  // Initialize serial communication at 9600 baud
+  Serial.begin(9600);
+  
+  // Configure steppers
+  stepperX.setMaxSpeed(1000);      // Set maximum speed (steps per second)
+  stepperX.setAcceleration(500);   // Set acceleration (steps per second^2)
+  
+  stepperY.setMaxSpeed(1000);
+  stepperY.setAcceleration(500);
+  
+  // Initialize current positions to zero
+  stepperX.setCurrentPosition(0);
+  stepperY.setCurrentPosition(0);
+  
+  Serial.println("Arduino Ready. Awaiting commands...");
+}
+
+void loop() {
+  // Check if data is available on serial
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');  // Read the incoming string until newline
+    input.trim();  // Remove any leading/trailing whitespace
+    
+    // Parse the command
+    if (input.startsWith("ROTATE")) {
+      // Expected format: "ROTATE X,Y"
+      int firstSpace = input.indexOf(' ');
+      int commaIndex = input.indexOf(',', firstSpace + 1);
+      
+      if (firstSpace != -1 && commaIndex != -1) {
+        String xStr = input.substring(firstSpace + 1, commaIndex);
+        String yStr = input.substring(commaIndex + 1);
+        
+        long stepsX = xStr.toInt();
+        long stepsY = yStr.toInt();
+        
+        Serial.print("Rotating X by ");
+        Serial.print(stepsX);
+        Serial.print(" steps, Y by ");
+        Serial.print(stepsY);
+        Serial.println(" steps.");
+        
+        // Rotate X-axis
+        stepperX.moveTo(stepperX.currentPosition() + stepsX);
+        // Rotate Y-axis
+        stepperY.moveTo(stepperY.currentPosition() + stepsY);
+        
+        // Move the steppers until they reach the target
+        while (stepperX.distanceToGo() != 0 || stepperY.distanceToGo() != 0) {
+          stepperX.run();
+          stepperY.run();
+        }
+        
+        Serial.println("Rotation complete.");
+      } else {
+        Serial.println("Invalid ROTATE command format. Use: ROTATE X,Y");
+      }
+    } else {
+      Serial.println("Unknown command. Available commands: ROTATE X,Y");
+    }
+  }
+}
