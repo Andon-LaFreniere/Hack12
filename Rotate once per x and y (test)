@@ -1,7 +1,7 @@
 #include <AccelStepper.h>
 
 // Define stepper motor connections and motor interface type
-#define MOTOR_INTERFACE_TYPE 1  // Using step and direction pins
+#define MOTOR_INTERFACE_TYPE 1  // Using Step and Direction pins
 
 // Motor pins for X-axis
 const int stepPinX = 3;
@@ -15,40 +15,56 @@ const int dirPinY = 6;
 AccelStepper stepperX(MOTOR_INTERFACE_TYPE, stepPinX, dirPinX);
 AccelStepper stepperY(MOTOR_INTERFACE_TYPE, stepPinY, dirPinY);
 
-// Set the number of steps per revolution for your motor based on microstepping
-// If you're using 1/16 microstepping (commonly with A4988/DRV8825), this would be 3200 steps per revolution
-const long stepsPerRev = 3200;  // Adjust based on your microstepping setting
+// Set the number of steps per revolution based on your microstepping setting
+// For 1/16 microstepping: 200 steps * 16 = 3200 steps/rev
+const long stepsPerRev_X = 3200;  // Adjust if using different microstepping
+const long stepsPerRev_Y = 3200;  // Adjust if using different microstepping
+
+// Flag to indicate if a move is in progress
+bool isMoving = false;
 
 void setup() {
-  // Initialize serial communication (optional, for debugging)
+  // Initialize serial communication for debugging
   Serial.begin(9600);
-  
-  // Set maximum speed and acceleration
-  stepperX.setMaxSpeed(1000);    // Steps per second
-  stepperX.setAcceleration(500); // Steps per second^2
-  
+  while (!Serial) {
+    ; // Wait for serial port to connect. Needed for native USB
+  }
+  Serial.println("Arduino Ready. Starting rotation...");
+
+  // Configure steppers
+  stepperX.setMaxSpeed(1000);      // Steps per second
+  stepperX.setAcceleration(500);   // Steps per second^2
+
   stepperY.setMaxSpeed(1000);
   stepperY.setAcceleration(500);
+
+  // Set initial positions to zero
+  stepperX.setCurrentPosition(0);
+  stepperY.setCurrentPosition(0);
+
+  // Define target positions for one full revolution
+  stepperX.moveTo(stepsPerRev_X);
+  stepperY.moveTo(stepsPerRev_Y);
+
+  isMoving = true;
 }
 
 void loop() {
-  // Rotate X motor one full revolution
-  Serial.println("Rotating X motor one full revolution...");
-  stepperX.moveTo(stepperX.currentPosition() + stepsPerRev);
-  while (stepperX.distanceToGo() != 0) {
-    stepperX.run();
+  if (isMoving) {
+    // Run both steppers
+    bool stepperXRunning = stepperX.run();
+    bool stepperYRunning = stepperY.run();
+
+    // Check if both steppers have reached their targets
+    if (!stepperXRunning && !stepperYRunning) {
+      isMoving = false;
+      Serial.println("Both motors have completed one full revolution.");
+      
+      // Optionally, stop the program or reset for another move
+      // For demonstration, we'll halt here
+      while (1) {
+        ; // Do nothing, effectively stopping the loop
+      }
+    }
   }
-  
-  // Delay before rotating Y motor
-  delay(1000);
-  
-  // Rotate Y motor one full revolution
-  Serial.println("Rotating Y motor one full revolution...");
-  stepperY.moveTo(stepperY.currentPosition() + stepsPerRev);
-  while (stepperY.distanceToGo() != 0) {
-    stepperY.run();
-  }
-  
-  // Delay before restarting loop
-  delay(2000);
 }
