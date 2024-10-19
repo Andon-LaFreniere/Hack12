@@ -1,77 +1,92 @@
-import serial
-import time
+#include <AccelStepper.h>
 
-# --- Configuration ---
+// Define stepper motor connections and motor interface type
+#define MOTOR_INTERFACE_TYPE 1  // Using step and direction pins
 
-# Set the serial port to COM5
-arduino_port = 'COM5'  # Change this if your Arduino is connected to a different port
-baud_rate = 9600       # Must match the Arduino's baud rate
+// Motor pins for X-axis
+const int stepPinX = 3;
+const int dirPinX = 4;
 
-# Number of steps for one full revolution
-steps_per_rev_X = 200  # X-axis steps per revolution
-steps_per_rev_Y = 200  # Y-axis steps per revolution
+// Motor pins for Y-axis
+const int stepPinY = 5;
+const int dirPinY = 6;
 
-# Initialize serial connection
-try:
-    ser = serial.Serial(arduino_port, baud_rate, timeout=1)
-    print(f"Connected to Arduino on port {arduino_port} at {baud_rate} baud.")
-except serial.SerialException as e:
-    print(f"Error: Could not open serial port {arduino_port}: {e}")
-    exit()
+// Create AccelStepper instances for X and Y axes
+AccelStepper stepperX(MOTOR_INTERFACE_TYPE, stepPinX, dirPinX);
+AccelStepper stepperY(MOTOR_INTERFACE_TYPE, stepPinY, dirPinY);
 
-# Allow some time for the connection to establish
-time.sleep(2)
+// Calibration variables (steps per revolution)
+const long stepsPerRev = 200;  // 200 steps per revolution
 
-# --- Function to Send ROTATE Command ---
+void setup() {
+  // Initialize serial communication at 9600 baud
+  Serial.begin(9600);
+  
+  // Configure steppers
+  stepperX.setMaxSpeed(1000);      // Set maximum speed (steps per second)
+  stepperX.setAcceleration(500);   // Set acceleration (steps per second^2)
+  
+  stepperY.setMaxSpeed(1000);
+  stepperY.setAcceleration(500);
+  
+  // Initialize current positions to zero
+  stepperX.setCurrentPosition(0);
+  stepperY.setCurrentPosition(0);
+  
+  Serial.println("Arduino Ready. Awaiting commands...");
+}
 
-def rotate_motors(steps_x, steps_y):
-    """
-    Sends a ROTATE command to the Arduino to rotate the X and Y motors.
-
-    Parameters:
-    steps_x (int): Number of steps to rotate the X-axis motor.
-    steps_y (int): Number of steps to rotate the Y-axis motor.
-    """
-    command = f"ROTATE {steps_x},{steps_y}\n"
-    ser.write(command.encode())
-    print(f"Sent command: {command.strip()}")
-
-# --- Function to Read Arduino Response ---
-
-def read_response():
-    """
-    Reads and prints all available responses from the Arduino.
-    """
-    while ser.in_waiting > 0:
-        response = ser.readline().decode('utf-8').strip()
-        if response:
-            print(f"Arduino: {response}")
-
-# --- Main Execution ---
-
-try:
-    # Optionally, read initial position
-    print("Requesting initial positions...")
-    ser.write(b'READ\n')
-    time.sleep(0.5)  # Wait for Arduino to respond
-    read_response()
-
-    # Rotate both motors by one full revolution (200 steps each)
-    print("\nRotating both X and Y motors by one full revolution (200 steps each).")
-    rotate_motors(steps_per_rev_X, steps_per_rev_Y)
-
-    # Allow time for motors to complete rotation
-    time.sleep(3)  # Adjust based on your system's speed
-
-    # Read updated positions
-    print("\nRequesting updated positions...")
-    ser.write(b'READ\n')
-    time.sleep(0.5)
-    read_response()
-
-except KeyboardInterrupt:
-    print("\nInterrupted by user.")
-
-finally:
-    ser.close()
-    print("Serial connection closed.")
+void loop() {
+  // Check if data is available on serial
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');  // Read the incoming string until newline
+    input.trim();  // Remove any leading/trailing whitespace
+    
+    // Parse the command
+    if (input.startsWith("ROTATE")) {
+      // Expected format: "ROTATE X,Y"
+      int firstSpace = input.indexOf(' ');
+      int commaIndex = input.indexOf(',', firstSpace + 1);
+      
+      if (firstSpace != -1 && commaIndex != -1) {
+        String xStr = input.substring(firstSpace + 1, commaIndex);
+        String yStr = input.substring(commaIndex + 1);
+        
+        long stepsX = xStr.toInt();
+        long stepsY = yStr.toInt();
+        
+        Serial.print("Rotating X by ");
+        Serial.print(stepsX);
+        Serial.print(" steps, Y by ");
+        Serial.print(stepsY);
+        Serial.println(" steps.");
+        
+        // Rotate X-axis
+        stepperX.moveTo(stepperX.currentPosition() + stepsX);
+        // Rotate Y-axis
+        stepperY.moveTo(stepperY.currentPosition() + stepsY);
+        
+        // Move the steppers until they reach the target
+        while (stepperX.distanceToGo() != 0 || stepperY.distanceToGo() != 0) {
+          stepperX.run();
+          stepperY.run();
+        }
+        
+        Serial.println("Rotation complete.");
+      } else {
+        Serial.println("Invalid ROTATE command format. Use: ROTATE X,Y");
+      }
+    } else if (input.startsWith("READ")) {
+      // Respond with current positions
+      float currentX = stepperX.currentPosition() / 1600.0;  // Assuming stepsPerMM = 1600
+      float currentY = stepperY.currentPosition() / 1600.0;
+      Serial.print("Current Position: X: ");
+      Serial.print(currentX, 3);
+      Serial.print(" mm, Y: ");
+      Serial.print(currentY, 3);
+      Serial.println(" mm");
+    } else {
+      Serial.println("Unknown command. Available commands: ROTATE X,Y or READ");
+    }
+  }
+}
