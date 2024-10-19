@@ -1,25 +1,33 @@
 #include <AccelStepper.h>
 
-// Defines pins for the X-axis
+// Defines pins for X and Y axes
 const int stepPinX = 3;
 const int dirPinX = 4;
 
-// Stepper motor setup for X-axis
-AccelStepper stepperX(AccelStepper::DRIVER, stepPinX, dirPinX);
+const int stepPinY = 5;
+const int dirPinY = 6;
 
-// Initial steps per millimeter for X-axis (starting with 1600 steps)
-float stepsPerMM_X = 1600.0;  // Adjust this after calibration
+// Stepper motor setup for X and Y axes
+AccelStepper stepperX(AccelStepper::DRIVER, stepPinX, dirPinX);
+AccelStepper stepperY(AccelStepper::DRIVER, stepPinY, dirPinY);
+
+// Initial steps per millimeter for X and Y axes
+float stepsPerMM_X = 1600.0;
+float stepsPerMM_Y = 1600.0;
 
 void setup() {
   Serial.begin(9600);
   
-  // Set up the stepper motor's max speed and acceleration
-  stepperX.setMaxSpeed(3000);  // Max speed in steps per second
-  stepperX.setAcceleration(1000);  // Acceleration in steps per second squared
+  // Set up the stepper motors' max speed and acceleration
+  stepperX.setMaxSpeed(3000);  
+  stepperX.setAcceleration(1000);  
   
-  Serial.println("Calibration Mode: X-Axis");
-  Serial.println("Enter 'CALIBRATE X <steps>' to move the motor by a number of steps.");
-  Serial.println("After measurement, enter 'SET_STEPS_PER_MM X <value>' to update the calibration.");
+  stepperY.setMaxSpeed(3000);  
+  stepperY.setAcceleration(1000);  
+  
+  Serial.println("Calibration Mode: X and Y Axes");
+  Serial.println("Enter 'CALIBRATE X <steps>' or 'CALIBRATE Y <steps>' to move the motors.");
+  Serial.println("After measurement, enter 'SET_STEPS_PER_MM X <value>' or 'SET_STEPS_PER_MM Y <value>' to update the calibration.");
 }
 
 void loop() {
@@ -27,7 +35,7 @@ void loop() {
     String input = Serial.readStringUntil('\n');
     input.trim();
     
-    // Handle CALIBRATE command
+    // Handle CALIBRATE command for X
     if (input.startsWith("CALIBRATE X")) {
       long steps = input.substring(11).toInt();
       Serial.print("Moving X-axis by ");
@@ -36,15 +44,38 @@ void loop() {
       moveStepperX(steps);
     }
     
-    // Handle SET_STEPS_PER_MM command
+    // Handle CALIBRATE command for Y
+    else if (input.startsWith("CALIBRATE Y")) {
+      long steps = input.substring(11).toInt();
+      Serial.print("Moving Y-axis by ");
+      Serial.print(steps);
+      Serial.println(" steps.");
+      moveStepperY(steps);
+    }
+    
+    // Handle SET_STEPS_PER_MM command for X
     else if (input.startsWith("SET_STEPS_PER_MM X")) {
       stepsPerMM_X = input.substring(18).toFloat();
       Serial.print("Updated stepsPerMM_X to: ");
       Serial.println(stepsPerMM_X);
     }
+    
+    // Handle SET_STEPS_PER_MM command for Y
+    else if (input.startsWith("SET_STEPS_PER_MM Y")) {
+      stepsPerMM_Y = input.substring(18).toFloat();
+      Serial.print("Updated stepsPerMM_Y to: ");
+      Serial.println(stepsPerMM_Y);
+    }
   }
-  
-  stepperX.run();  // Continuously run the stepper motor
+
+  // Only run stepper if there are steps to move
+  if (stepperX.distanceToGo() != 0) {
+    stepperX.run();  // Continuously run X-axis stepper motor
+  }
+
+  if (stepperY.distanceToGo() != 0) {
+    stepperY.run();  // Continuously run Y-axis stepper motor
+  }
 }
 
 // Function to move the X-axis by a specific number of steps
@@ -56,10 +87,27 @@ void moveStepperX(long steps) {
   sendPositionX();
 }
 
-// Function to report the current position in millimeters
+// Function to move the Y-axis by a specific number of steps
+void moveStepperY(long steps) {
+  stepperY.move(steps);
+  while (stepperY.distanceToGo() != 0) {
+    stepperY.run();
+  }
+  sendPositionY();
+}
+
+// Function to report the current position of the X-axis in millimeters
 void sendPositionX() {
   float x_mm = stepperX.currentPosition() / stepsPerMM_X;
   Serial.print("Current X position: ");
   Serial.print(x_mm, 3);  // Display in millimeters with 3 decimal places
   Serial.println(" mm");
-} //x test
+}
+
+// Function to report the current position of the Y-axis in millimeters
+void sendPositionY() {
+  float y_mm = stepperY.currentPosition() / stepsPerMM_Y;
+  Serial.print("Current Y position: ");
+  Serial.print(y_mm, 3);  // Display in millimeters with 3 decimal places
+  Serial.println(" mm");
+}
