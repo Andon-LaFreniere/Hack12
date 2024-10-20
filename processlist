@@ -1,0 +1,9 @@
+def process_list(list):
+    newvalue = list[0]
+    for i in range(len(steplistx)):
+        if (list[i+1]==newvalue):
+            list[i+1] = 0;
+        else:
+            newvalue
+            list[i+1] = list[i+1] - newvalue
+            
