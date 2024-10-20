@@ -1,0 +1,78 @@
+//switch it to where if the number is a negative hten it switches directions. 
+
+
+const int stepPin1 = 3; // Step pin for Motor 1
+const int dirPin1 = 4;  // Direction pin for Motor 1
+
+// Define pins for the second stepper motor (Motor 2)
+const int stepPin2 = 5; // Step pin for Motor 2
+const int dirPin2 = 6;  // Direction pin for Motor 2
+
+// Arrays to hold steps for both motors
+const float stepsxList[] = {110.41666666666667, -110.41666666666667, 110.41666666666667, -220.83333333333334, 331.25, 331.25, 331.25}; // Example steps for Motor 1
+const float stepsyList[] = {-220.83333333333334, 441.6666666666667, 662.5, -441.6666666666667, 220.83333333333334, 441.6666666666667, 662.5};  // Example steps for Motor 2
+//input list 
+// Number of elements in the step arrays
+const int numSteps = sizeof(stepsxList) / sizeof(stepsxList[0]);
+
+void setup() {
+  // Set the step and direction pins for both motors as outputs
+  pinMode(stepPin1, OUTPUT);
+  pinMode(dirPin1, OUTPUT);
+  pinMode(stepPin2, OUTPUT);
+  pinMode(dirPin2, OUTPUT);
+  
+  // Initialize serial communication at a baud rate of 9600
+  Serial.begin(9600);
+
+  // Set the initial direction to clockwise for both motors
+  digitalWrite(dirPin1, HIGH); // Motor 1 clockwise
+  digitalWrite(dirPin2, LOW; // Motor 2 clockwise
+}
+
+void loop() {
+  // Loop through each step value in the arrays
+  for (int i = 0; i < numSteps; i++) {
+    
+    int stepsx = stepsxList[i]; // Get the current stepsx value
+    int stepsy = stepsyList[i]; // Get the current stepsy value
+
+
+      //Determine the direction of motor 1 
+     if (stepsx >= 0 ) {
+      digitalWrite(dirPin1, HIGH); //set direction to clockwise
+      } else {
+        digitalWrite(dirPin1, LOW);
+        stepsx=-stepsx; 
+      }
+
+      //Determine the direction of motor 2
+      if (stepsy >= 0 ) {
+      digitalWrite(dirPin2, HIGH); //set direction to clockwise
+      } else {
+        digitalWrite(dirPin2, LOW);
+        stepsy=-stepsy; 
+      }
+
+
+    // Spin Motor 1 stepsx steps
+    for (int j = 0; j < stepsx; j++) {
+      
+      digitalWrite(stepPin1, HIGH); // Send a HIGH signal
+      delayMicroseconds(1000);       // Wait for a bit (adjust for speed)
+      digitalWrite(stepPin1, LOW);   // Send a LOW signal
+      delayMicroseconds(10000);       // Wait for a bit
+    }
+
+    // Spin Motor 2 stepsy steps
+    for (int j = 0; j < stepsy; j++) {
+      digitalWrite(stepPin2, HIGH); // Send a HIGH signal
+      delayMicroseconds(1000);       // Wait for a bit (adjust for speed)
+      digitalWrite(stepPin2, LOW);   // Send a LOW signal
+      delayMicroseconds(10000);       // Wait for a bit
+    }
+  }
+
+  // Stop after running through the step lists (or uncomment to loop)
+  while (true); // Stops the loop
+}
